@@ -41,6 +41,7 @@
         .header {
             text-align: center;
             margin-bottom: 30px;
+            position: relative;
         }
 
         .header h1 {
@@ -331,6 +332,26 @@
             vertical-align: middle;
         }
 
+        .btn-logout {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #fff;
+        }
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -357,6 +378,7 @@
 <body>
     <div class="container">
         <div class="header">
+            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
             <h1>📋 Mi Lista de Tareas</h1>
             <p>Organiza tu día de forma simple y elegante</p>
         </div>
@@ -399,8 +421,34 @@
 
     <script>
         const API_URL = window.location.origin + '/todos';
+        const token = localStorage.getItem('token');
         let todos = [];
         let currentFilter = 'all';
+
+        // Redirect to login if no token
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        // Auth headers helper
+        function authHeaders(extra = {}) {
+            return { 'Authorization': 'Bearer ' + token, ...extra };
+        }
+
+        // Handle 401 responses
+        function handleUnauthorized(response) {
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+                return true;
+            }
+            return false;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
 
         // DOM Elements
         const todoList = document.getElementById('todoList');
@@ -432,7 +480,10 @@
         // API Functions
         async function loadTodos() {
             try {
-                const response = await fetch(`${API_URL}/`);
+                const response = await fetch(`${API_URL}/`, {
+                    headers: authHeaders()
+                });
+                if (handleUnauthorized(response)) return;
                 if (!response.ok) throw new Error('Error al cargar tareas');
                 todos = await response.json();
                 renderTodos();
@@ -455,10 +506,11 @@
             try {
                 const response = await fetch(`${API_URL}/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ title, description })
                 });
 
+                if (handleUnauthorized(response)) return;
                 if (!response.ok) throw new Error('Error al crear tarea');
 
                 const newTodo = await response.json();
@@ -478,10 +530,11 @@
             try {
                 const response = await fetch(`${API_URL}/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ completed: !todo.completed })
                 });
 
+                if (handleUnauthorized(response)) return;
                 if (!response.ok) throw new Error('Error al actualizar tarea');
 
                 const updated = await response.json();
@@ -496,9 +549,11 @@
         async function deleteTodo(id) {
             try {
                 const response = await fetch(`${API_URL}/${id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: authHeaders()
                 });
 
+                if (handleUnauthorized(response)) return;
                 if (!response.ok) throw new Error('Error al eliminar tarea');
 
                 todos = todos.filter(t => t.id !== id);

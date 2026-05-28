@@ -3,11 +3,16 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user
 from app.database import get_db
-from app.models import Todo
+from app.models import Todo, User
 from app.schemas import TodoCreate, TodoResponse, TodoUpdate
 
-router = APIRouter(prefix="/todos", tags=["todos"])
+router = APIRouter(
+    prefix="/todos",
+    tags=["todos"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("/", response_model=list[TodoResponse])
