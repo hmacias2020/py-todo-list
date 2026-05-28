@@ -1,10 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from app.database import Base, engine
 from app.routers import todos
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 
 @asynccontextmanager
@@ -29,3 +33,8 @@ app.add_middleware(
 )
 
 app.include_router(todos.router)
+
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
